@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turning — Генератор</title>
+    <link rel="icon" href="./IMG_20260926_155712_205.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="page page--generator">
+
+    <!-- Фоновое изображение -->
+    <div class="bg"></div>
+
+    <!-- Кнопка «История» слева сверху -->
+    <a href="history.html" class="history-link" aria-label="История">📜</a>
+
+    <!-- Итоговый результат -->
+    <header class="result">
+        <div class="result__line" id="result-line">
+            <span class="result__placeholder">Нажми «Крутить», чтобы получить результат</span>
+        </div>
+    </header>
+
+    <!-- Два колеса -->
+    <main class="wheels">
+        <section class="wheel" data-wheel="characters">
+            <h3 class="wheel__title">Персонаж</h3>
+            <div class="wheel__slot" id="char-slot">—</div>
+            <button class="wheel__spin" type="button" data-target="characters">Крутить</button>
+        </section>
+
+        <section class="wheel" data-wheel="actions">
+            <h3 class="wheel__title">Действие</h3>
+            <div class="wheel__slot" id="action-slot">—</div>
+            <button class="wheel__spin" type="button" data-target="actions">Крутить</button>
+        </section>
+    </main>
+
+    <!-- Основная кнопка -->
+    <footer class="actions">
+        <button id="spin-all" class="btn btn--primary" type="button">🎲 Крутить ещё раз</button>
+        <div class="actions__hint">
+            <a href="#" id="open-manage">Управление фразами</a>
+        </div>
+    </footer>
+
+    <!-- Модальное окно управления фразами -->
+    <div id="manage-modal" class="modal" hidden>
+        <div class="modal__window">
+            <h3 class="modal__title">Управление фразами</h3>
+
+            <h4 class="modal__subtitle">Персонажи</h4>
+            <div id="list-characters" class="phrase-list"></div>
+            <div class="phrase-add">
+                <input id="new-character" class="field__input" type="text" placeholder="Новый персонаж">
+                <button class="btn btn--primary btn--small" type="button" data-add="characters">Добавить</button>
+            </div>
+
+            <h4 class="modal__subtitle">Действия</h4>
+            <div id="list-actions" class="phrase-list"></div>
+            <div class="phrase-add">
+                <input id="new-action" class="field__input" type="text" placeholder="Новое действие">
+                <button class="btn btn--primary btn--small" type="button" data-add="actions">Добавить</button>
+            </div>
+
+            <div class="modal__actions">
+                <button id="manage-close" class="btn btn--ghost btn--dark" type="button">Закрыть</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast" hidden></div>
+    <script src="./app.js"></script>
+</body>
+</html>
