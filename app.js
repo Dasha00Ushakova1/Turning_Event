@@ -60,6 +60,44 @@ function initGenerator() {
             console.warn('history.db недоступна:', err.message);
         });
 
+    /* Текущие значения каждого колеса («—» пока не крутили) */
+    let currentChar   = '—';
+    let currentAction = '—';
+
+    /**
+     * Обновляет верхнюю строку результата.
+     * @param {boolean} saveToHistory — писать ли запись в БД
+     */
+    function updateResultLine(saveToHistory) {
+        const text = `${currentChar} + ${currentAction}`;
+        resultLine.innerHTML = `<span class="result__text">${text}</span>`;
+
+        // В историю пишем только когда оба колеса показали значения
+        const bothReady = currentChar !== '—' && currentAction !== '—';
+        if (saveToHistory && bothReady && db) {
+            const now = new Date();
+            const entry = {
+                timestamp: now.getTime(),
+                formatted: formatTimestamp(now),
+                character: currentChar,
+                action: currentAction,
+                result: text
+            };
+            try {
+                insertHistory(db, entry);
+                showToast('Запись добавлена в историю', 'success');
+            } catch (e) {
+                console.error('Не удалось добавить запись:', e);
+                showToast('Ошибка записи в историю', 'error');
+            }
+        }
+    }
+
+    /**
+     * Прокрутить одно колесо.
+     * @param {'characters'|'actions'} kind
+     * @returns {string} финальное значение
+     */
     function spinOne(kind) {
         const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
         const value = pickRandom(list);
@@ -75,53 +113,41 @@ function initGenerator() {
                 slot.textContent = value;
                 slot.classList.add('wheel__slot--pop');
                 setTimeout(() => slot.classList.remove('wheel__slot--pop'), 300);
+
+                // Запоминаем значение в состоянии
+                if (kind === 'characters') currentChar = value;
+                else                        currentAction = value;
+
+                // Обновляем верхнюю строку без записи в историю
+                updateResultLine(false);
             }
         }, 60);
 
         return value;
     }
 
-    function spinAll() {
-        const charValue   = spinOne('characters');
-        const actionValue = spinOne('actions');
+    /* Кнопка «Запустить всё одновременно» — крутит оба и пишет в БД */
+    spinAllBtn.addEventListener('click', () => {
+        spinOne('characters');
+        spinOne('actions');
 
-        setTimeout(() => {
-            const text = `${charValue} + ${actionValue}`;
-            resultLine.innerHTML = `<span class="result__text">${text}</span>`;
-
-            const now = new Date();
-            const entry = {
-                timestamp: now.getTime(),
-                formatted: formatTimestamp(now),
-                character: charValue,
-                action: actionValue,
-                result: text
-            };
-
-            // Пишем в БД (в памяти страницы)
-            if (db) {
-                try {
-                    insertHistory(db, entry);
-                    showToast('Запись добавлена в историю', 'success');
-                } catch (e) {
-                    console.error('Не удалось добавить запись:', e);
-                    showToast('Ошибка записи в историю', 'error');
-                }
-            } else {
-                showToast('История недоступна', 'error');
-            }
-        }, 550);
-    }
-
-    spinAllBtn.addEventListener('click', spinAll);
-
-    document.querySelectorAll('.wheel__spin').forEach(btn => {
-        btn.addEventListener('click', () => spinOne(btn.dataset.target));
+        // Ждём окончания анимации обоих колёс и сохраняем запись
+        setTimeout(() => updateResultLine(true), 600);
     });
+
+    /* Кнопки «Крутить» у каждого колеса — крутят только своё,
+       и обновляют верхнюю строку, но НЕ пишут в историю. */
+    document.querySelectorAll('.wheel__spin').forEach(btn => {
+        btn.addEventListener('click', () => {
+            spinOne(btn.dataset.target);
+        });
+    });
+
+    /* Если страница открыта — сразу ничего не показываем */
+    // (при желании можно здесь вызвать updateResultLine(false))
 
     initManageModal();
 }
-
 /* ============================================================
  * Модалка управления фразами
  * ============================================================ */
