@@ -1,26 +1,14 @@
 'use strict';
 
 /* ============================================================
- * Списки фраз
+ * Значения по умолчанию — используются как fallback,
+ * если history.db недоступна
  * ============================================================ */
 const DEFAULT_CHARACTERS = ['Юдер', 'Канна', 'Нахан', 'Кишиар', 'Гакейн'];
 const DEFAULT_ACTIONS    = ['У моря', 'Спит', 'Что-то ест', 'Рабочий день', 'Выходной'];
 
-/* ============================================================
- * Хранилище фраз (списки) — localStorage
- * ============================================================ */
-const Storage = {
-    getCharacters() {
-        const raw = localStorage.getItem('characters');
-        return raw ? JSON.parse(raw) : [...DEFAULT_CHARACTERS];
-    },
-    setCharacters(list) { localStorage.setItem('characters', JSON.stringify(list)); },
-    getActions() {
-        const raw = localStorage.getItem('actions');
-        return raw ? JSON.parse(raw) : [...DEFAULT_ACTIONS];
-    },
-    setActions(list) { localStorage.setItem('actions', JSON.stringify(list)); }
-};
+/* Кэш БД — чтобы не тянуть её в каждой функции */
+let _appDb = null;
 
 /* ============================================================
  * Утилиты
@@ -45,36 +33,89 @@ function showToast(message, type = 'info') {
 }
 
 /* ============================================================
+ * Обёртки над фразами — если БД есть, работаем с ней;
+ * иначе (на крайний случай) — с localStorage.
+ * ============================================================ */
+function getCharacters() {
+    if (_appDb) {
+        const rows = getPhrases(_appDb, 'character');
+        return rows.length ? rows.map(r => r.value) : [...DEFAULT_CHARACTERS];
+    }
+    const raw = localStorage.getItem('characters');
+    return raw ? JSON.parse(raw) : [...DEFAULT_CHARACTERS];
+}
+
+function getActions() {
+    if (_appDb) {
+        const rows = getPhrases(_appDb, 'action');
+        return rows.length ? rows.map(r => r.value) : [...DEFAULT_ACTIONS];
+    }
+    const raw = localStorage.getItem('actions');
+    return raw ? JSON.parse(raw) : [...DEFAULT_ACTIONS];
+}
+
+function addCharacter(value) {
+    if (_appDb) {
+        if (phraseExists(_appDb, 'character', value)) return false;
+        insertPhrase(_appDb, 'character', value);
+    }
+    // Дублируем в localStorage — как временный буфер
+    const list = JSON.parse(localStorage.getItem('characters') || '[]');
+    if (!list.includes(value)) list.push(value);
+    localStorage.setItem('characters', JSON.stringify(list));
+    return true;
+}
+
+function addAction(value) {
+    if (_appDb) {
+        if (phraseExists(_appDb, 'action', value)) return false;
+        insertPhrase(_appDb, 'action', value);
+    }
+    const list = JSON.parse(localStorage.getItem('actions') || '[]');
+    if (!list.includes(value)) list.push(value);
+    localStorage.setItem('actions', JSON.stringify(list));
+    return true;
+}
+
+function removeCharacter(value) {
+    if (_appDb) deletePhrase(_appDb, 'character', value);
+    const list = JSON.parse(localStorage.getItem('characters') || '[]');
+    const filtered = list.filter(v => v !== value);
+    localStorage.setItem('characters', JSON.stringify(filtered));
+}
+
+function removeAction(value) {
+    if (_appDb) deletePhrase(_appDb, 'action', value);
+    const list = JSON.parse(localStorage.getItem('actions') || '[]');
+    const filtered = list.filter(v => v !== value);
+    localStorage.setItem('actions', JSON.stringify(filtered));
+}
+
+/* ============================================================
  * ГЕНЕРАТОР (index.html)
  * ============================================================ */
-function initGenerator() {
+async function initGenerator() {
     const charSlot   = document.getElementById('char-slot');
     const actionSlot = document.getElementById('action-slot');
     const resultLine = document.getElementById('result-line');
     const spinAllBtn = document.getElementById('spin-all');
 
-    let db = null;
-    loadHistoryDatabase()
-        .then(database => { db = database; })
-        .catch(err => {
-            console.warn('history.db недоступна:', err.message);
-        });
+    try {
+        _appDb = await loadHistoryDatabase();
+    } catch (err) {
+        console.warn('history.db недоступна:', err.message);
+        _appDb = null;
+    }
 
-    /* Текущие значения каждого колеса («—» пока не крутили) */
     let currentChar   = '—';
     let currentAction = '—';
 
-    /**
-     * Обновляет верхнюю строку результата.
-     * @param {boolean} saveToHistory — писать ли запись в БД
-     */
     function updateResultLine(saveToHistory) {
         const text = `${currentChar} + ${currentAction}`;
         resultLine.innerHTML = `<span class="result__text">${text}</span>`;
 
-        // В историю пишем только когда оба колеса показали значения
         const bothReady = currentChar !== '—' && currentAction !== '—';
-        if (saveToHistory && bothReady && db) {
+        if (saveToHistory && bothReady && _appDb) {
             const now = new Date();
             const entry = {
                 timestamp: now.getTime(),
@@ -84,7 +125,7 @@ function initGenerator() {
                 result: text
             };
             try {
-                insertHistory(db, entry);
+                insertHistory(_appDb, entry);
                 showToast('Запись добавлена в историю', 'success');
             } catch (e) {
                 console.error('Не удалось добавить запись:', e);
@@ -93,13 +134,8 @@ function initGenerator() {
         }
     }
 
-    /**
-     * Прокрутить одно колесо.
-     * @param {'characters'|'actions'} kind
-     * @returns {string} финальное значение
-     */
     function spinOne(kind) {
-        const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
+        const list = kind === 'characters' ? getCharacters() : getActions();
         const value = pickRandom(list);
         const slot = kind === 'characters' ? charSlot : actionSlot;
 
@@ -114,11 +150,9 @@ function initGenerator() {
                 slot.classList.add('wheel__slot--pop');
                 setTimeout(() => slot.classList.remove('wheel__slot--pop'), 300);
 
-                // Запоминаем значение в состоянии
                 if (kind === 'characters') currentChar = value;
-                else                        currentAction = value;
+                else                       currentAction = value;
 
-                // Обновляем верхнюю строку без записи в историю
                 updateResultLine(false);
             }
         }, 60);
@@ -126,28 +160,19 @@ function initGenerator() {
         return value;
     }
 
-    /* Кнопка «Запустить всё одновременно» — крутит оба и пишет в БД */
     spinAllBtn.addEventListener('click', () => {
         spinOne('characters');
         spinOne('actions');
-
-        // Ждём окончания анимации обоих колёс и сохраняем запись
         setTimeout(() => updateResultLine(true), 600);
     });
 
-    /* Кнопки «Крутить» у каждого колеса — крутят только своё,
-       и обновляют верхнюю строку, но НЕ пишут в историю. */
     document.querySelectorAll('.wheel__spin').forEach(btn => {
-        btn.addEventListener('click', () => {
-            spinOne(btn.dataset.target);
-        });
+        btn.addEventListener('click', () => spinOne(btn.dataset.target));
     });
-
-    /* Если страница открыта — сразу ничего не показываем */
-    // (при желании можно здесь вызвать updateResultLine(false))
 
     initManageModal();
 }
+
 /* ============================================================
  * Модалка управления фразами
  * ============================================================ */
@@ -169,18 +194,24 @@ function initManageModal() {
 
     document.querySelectorAll('[data-add]').forEach(btn => {
         btn.addEventListener('click', () => {
-            const kind = btn.dataset.add;
+            const kind = btn.dataset.add;   // 'characters' | 'actions'
             const input = document.getElementById(
                 kind === 'characters' ? 'new-character' : 'new-action'
             );
             const value = input.value.trim();
             if (!value) { showToast('Введите фразу', 'error'); return; }
 
-            const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
-            if (list.includes(value)) { showToast('Уже есть', 'error'); return; }
+            const dbKind = kind === 'characters' ? 'character' : 'action';
 
-            list.push(value);
-            kind === 'characters' ? Storage.setCharacters(list) : Storage.setActions(list);
+            // Проверка на дубликат
+            if (_appDb && phraseExists(_appDb, dbKind, value)) {
+                showToast('Уже есть', 'error');
+                return;
+            }
+
+            if (kind === 'characters') addCharacter(value);
+            else                       addAction(value);
+
             input.value = '';
             renderManageLists();
             showToast('Добавлено', 'success');
@@ -197,7 +228,7 @@ function renderPhraseList(kind, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
+    const list = kind === 'characters' ? getCharacters() : getActions();
     container.innerHTML = '';
 
     if (list.length === 0) {
@@ -205,18 +236,16 @@ function renderPhraseList(kind, containerId) {
         return;
     }
 
-    list.forEach((phrase, idx) => {
+    list.forEach(phrase => {
         const row = document.createElement('div');
         row.className = 'phrase-list__row';
         row.innerHTML = `
             <span class="phrase-list__text">${phrase}</span>
-            <button class="btn btn--ghost btn--dark btn--small" type="button"
-                    data-remove="${kind}" data-idx="${idx}">✕</button>
+            <button class="btn btn--ghost btn--dark btn--small" type="button">✕</button>
         `;
-        row.querySelector('[data-remove]').addEventListener('click', () => {
-            const newList = [...list];
-            newList.splice(idx, 1);
-            kind === 'characters' ? Storage.setCharacters(newList) : Storage.setActions(newList);
+        row.querySelector('button').addEventListener('click', () => {
+            if (kind === 'characters') removeCharacter(phrase);
+            else                       removeAction(phrase);
             renderManageLists();
         });
         container.appendChild(row);
@@ -227,14 +256,13 @@ function renderPhraseList(kind, containerId) {
  * ИСТОРИЯ (history.html)
  * ============================================================ */
 async function initHistory() {
-    const listEl = document.getElementById('history-list');
+    const listEl  = document.getElementById('history-list');
     const emptyEl = document.getElementById('history-empty');
     const saveBtn = document.getElementById('save-db');
     const clearBtn = document.getElementById('clear-history');
 
-    let db;
     try {
-        db = await loadHistoryDatabase();
+        _appDb = await loadHistoryDatabase();
     } catch (err) {
         console.error(err);
         emptyEl.textContent = 'Не удалось загрузить history.db';
@@ -243,7 +271,7 @@ async function initHistory() {
     }
 
     function render() {
-        const entries = getAllHistory(db);
+        const entries = getAllHistory(_appDb);
         listEl.innerHTML = '';
 
         if (entries.length === 0) {
@@ -264,13 +292,13 @@ async function initHistory() {
     }
 
     saveBtn.addEventListener('click', () => {
-        downloadDatabase(db);
+        downloadDatabase(_appDb);
         showToast('Файл history.db скачан — залейте его в репозиторий', 'success');
     });
 
     clearBtn.addEventListener('click', () => {
         if (!confirm('Очистить всю историю?')) return;
-        clearHistoryDb(db);
+        clearHistoryDb(_appDb);
         render();
         showToast('История очищена — не забудьте сохранить файл', 'info');
     });
