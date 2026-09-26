@@ -62,6 +62,18 @@ body {
         rgba(0,0,0,0.75) 100%
     );
 }
+/* Таблица истории */
+.history-table {
+    margin-bottom: 16px;
+}
+.history-table th,
+.history-table td {
+    font-size: 14px;
+    white-space: nowrap;
+}
+.history-table td {
+    color: var(--color-text, #eee);
+}
 
 /* ==============================================================
    Верхняя кнопка «История»
