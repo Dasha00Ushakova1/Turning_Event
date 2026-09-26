@@ -1,51 +1,25 @@
 'use strict';
 
 /* ============================================================
- * Базовые списки (можно расширять через модалку «Управление фразами»)
+ * Списки фраз
  * ============================================================ */
-const DEFAULT_CHARACTERS = [
-    'Юдер', 'Кишиар', 'Нахан',
-    'Энон', 'Эвер', 'Канна'
-];
-
-const DEFAULT_ACTIONS = [
-    'Сидит у моря', 'Ест что-то', 'Прогулка',
-    'Рабочий день', 'Выходной'
-];
+const DEFAULT_CHARACTERS = ['Персонаж1', 'Персонаж2', 'Персонаж3', 'Персонаж4', 'Персонаж5'];
+const DEFAULT_ACTIONS    = ['Действие1', 'Действие2', 'Действие3', 'Действие4', 'Действие5'];
 
 /* ============================================================
- * Хранилище
+ * Хранилище фраз (списки) — localStorage
  * ============================================================ */
 const Storage = {
     getCharacters() {
         const raw = localStorage.getItem('characters');
         return raw ? JSON.parse(raw) : [...DEFAULT_CHARACTERS];
     },
-    setCharacters(list) {
-        localStorage.setItem('characters', JSON.stringify(list));
-    },
+    setCharacters(list) { localStorage.setItem('characters', JSON.stringify(list)); },
     getActions() {
         const raw = localStorage.getItem('actions');
         return raw ? JSON.parse(raw) : [...DEFAULT_ACTIONS];
     },
-    setActions(list) {
-        localStorage.setItem('actions', JSON.stringify(list));
-    },
-    getHistory() {
-        const raw = localStorage.getItem('history');
-        return raw ? JSON.parse(raw) : [];
-    },
-    setHistory(list) {
-        localStorage.setItem('history', JSON.stringify(list));
-    },
-    addHistory(entry) {
-        const list = this.getHistory();
-        list.unshift(entry);              // новые — сверху
-        this.setHistory(list);
-    },
-    clearHistory() {
-        localStorage.removeItem('history');
-    }
+    setActions(list) { localStorage.setItem('actions', JSON.stringify(list)); }
 };
 
 /* ============================================================
@@ -55,14 +29,11 @@ function pickRandom(arr) {
     if (!arr || arr.length === 0) return '—';
     return arr[Math.floor(Math.random() * arr.length)];
 }
-
 function pad2(n) { return String(n).padStart(2, '0'); }
-
 function formatTimestamp(date) {
     return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()} ` +
            `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
-
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -70,11 +41,11 @@ function showToast(message, type = 'info') {
     toast.className = `toast toast--${type}`;
     toast.hidden = false;
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => { toast.hidden = true; }, 2000);
+    showToast._t = setTimeout(() => { toast.hidden = true; }, 2500);
 }
 
 /* ============================================================
- * Логика генератора (index.html)
+ * ГЕНЕРАТОР (index.html)
  * ============================================================ */
 function initGenerator() {
     const charSlot   = document.getElementById('char-slot');
@@ -82,15 +53,18 @@ function initGenerator() {
     const resultLine = document.getElementById('result-line');
     const spinAllBtn = document.getElementById('spin-all');
 
-    /** Прокрутить одно колесо и записать значение в слот. */
+    let db = null;
+    loadHistoryDatabase()
+        .then(database => { db = database; })
+        .catch(err => {
+            console.warn('history.db недоступна:', err.message);
+        });
+
     function spinOne(kind) {
-        const list = kind === 'characters'
-            ? Storage.getCharacters()
-            : Storage.getActions();
+        const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
         const value = pickRandom(list);
         const slot = kind === 'characters' ? charSlot : actionSlot;
 
-        // Быстрая «анимация» — быстрое мелькание перед финалом
         let ticks = 0;
         const maxTicks = 8;
         const interval = setInterval(() => {
@@ -107,45 +81,54 @@ function initGenerator() {
         return value;
     }
 
-    /** Крутить оба колеса и вывести результат. */
     function spinAll() {
-        const charValue = spinOne('characters');
+        const charValue   = spinOne('characters');
         const actionValue = spinOne('actions');
 
-        // Результат — после окончания анимации второго колеса
         setTimeout(() => {
             const text = `${charValue} + ${actionValue}`;
             resultLine.innerHTML = `<span class="result__text">${text}</span>`;
 
-            // Запись в историю
             const now = new Date();
-            Storage.addHistory({
+            const entry = {
                 timestamp: now.getTime(),
                 formatted: formatTimestamp(now),
+                character: charValue,
+                action: actionValue,
                 result: text
-            });
+            };
+
+            // Пишем в БД (в памяти страницы)
+            if (db) {
+                try {
+                    insertHistory(db, entry);
+                    showToast('Запись добавлена в историю', 'success');
+                } catch (e) {
+                    console.error('Не удалось добавить запись:', e);
+                    showToast('Ошибка записи в историю', 'error');
+                }
+            } else {
+                showToast('История недоступна', 'error');
+            }
         }, 550);
     }
 
     spinAllBtn.addEventListener('click', spinAll);
 
-    // Отдельные кнопки у колёс — крутят только своё колесо
     document.querySelectorAll('.wheel__spin').forEach(btn => {
         btn.addEventListener('click', () => spinOne(btn.dataset.target));
     });
 
-    // Управление фразами
     initManageModal();
 }
 
 /* ============================================================
- * Модальное окно управления фразами
+ * Модалка управления фразами
  * ============================================================ */
 function initManageModal() {
     const modal = document.getElementById('manage-modal');
     const openBtn = document.getElementById('open-manage');
     const closeBtn = document.getElementById('manage-close');
-
     if (!modal || !openBtn) return;
 
     openBtn.addEventListener('click', e => {
@@ -158,7 +141,6 @@ function initManageModal() {
         if (e.target === modal) modal.hidden = true;
     });
 
-    // Добавление
     document.querySelectorAll('[data-add]').forEach(btn => {
         btn.addEventListener('click', () => {
             const kind = btn.dataset.add;
@@ -166,25 +148,13 @@ function initManageModal() {
                 kind === 'characters' ? 'new-character' : 'new-action'
             );
             const value = input.value.trim();
-            if (!value) {
-                showToast('Введите фразу', 'error');
-                return;
-            }
+            if (!value) { showToast('Введите фразу', 'error'); return; }
 
-            const list = kind === 'characters'
-                ? Storage.getCharacters()
-                : Storage.getActions();
-
-            if (list.includes(value)) {
-                showToast('Такая фраза уже есть', 'error');
-                return;
-            }
+            const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
+            if (list.includes(value)) { showToast('Такая фраза уже есть', 'error'); return; }
 
             list.push(value);
-            kind === 'characters'
-                ? Storage.setCharacters(list)
-                : Storage.setActions(list);
-
+            kind === 'characters' ? Storage.setCharacters(list) : Storage.setActions(list);
             input.value = '';
             renderManageLists();
             showToast('Фраза добавлена', 'success');
@@ -201,10 +171,7 @@ function renderPhraseList(kind, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const list = kind === 'characters'
-        ? Storage.getCharacters()
-        : Storage.getActions();
-
+    const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
     container.innerHTML = '';
 
     if (list.length === 0) {
@@ -223,9 +190,7 @@ function renderPhraseList(kind, containerId) {
         row.querySelector('[data-remove]').addEventListener('click', () => {
             const newList = [...list];
             newList.splice(idx, 1);
-            kind === 'characters'
-                ? Storage.setCharacters(newList)
-                : Storage.setActions(newList);
+            kind === 'characters' ? Storage.setCharacters(newList) : Storage.setActions(newList);
             renderManageLists();
         });
         container.appendChild(row);
@@ -233,45 +198,58 @@ function renderPhraseList(kind, containerId) {
 }
 
 /* ============================================================
- * Логика страницы истории (history.html)
+ * ИСТОРИЯ (history.html)
  * ============================================================ */
-function initHistory() {
-    const list = document.getElementById('history-list');
-    const empty = document.getElementById('history-empty');
+async function initHistory() {
+    const listEl = document.getElementById('history-list');
+    const emptyEl = document.getElementById('history-empty');
+    const saveBtn = document.getElementById('save-db');
     const clearBtn = document.getElementById('clear-history');
 
-    if (!list || !empty) return;
-
-    const history = Storage.getHistory();
-
-    if (history.length === 0) {
-        empty.hidden = false;
-        if (clearBtn) clearBtn.hidden = true;
+    let db;
+    try {
+        db = await loadHistoryDatabase();
+    } catch (err) {
+        console.error(err);
+        emptyEl.textContent = 'Не удалось загрузить history.db';
+        emptyEl.hidden = false;
         return;
     }
 
-    empty.hidden = true;
+    function render() {
+        const entries = getAllHistory(db);
+        listEl.innerHTML = '';
 
-    history.forEach(entry => {
-        const li = document.createElement('li');
-        li.className = 'history-item';
-        li.innerHTML = `
-            <span class="history-item__time">${entry.formatted}</span>
-            <span class="history-item__result">${entry.result}</span>
-        `;
-        list.appendChild(li);
-    });
+        if (entries.length === 0) {
+            emptyEl.hidden = false;
+            return;
+        }
+        emptyEl.hidden = true;
 
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            if (!confirm('Очистить всю историю генераций?')) return;
-            Storage.clearHistory();
-            list.innerHTML = '';
-            empty.hidden = false;
-            clearBtn.hidden = true;
-            showToast('История очищена', 'info');
+        entries.forEach(entry => {
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            li.innerHTML = `
+                <span class="history-item__time">${entry.formatted}</span>
+                <span class="history-item__result">${entry.result}</span>
+            `;
+            listEl.appendChild(li);
         });
     }
+
+    saveBtn.addEventListener('click', () => {
+        downloadDatabase(db);
+        showToast('Файл history.db скачан — залейте его в репозиторий', 'success');
+    });
+
+    clearBtn.addEventListener('click', () => {
+        if (!confirm('Очистить всю историю?')) return;
+        clearHistoryDb(db);
+        render();
+        showToast('История очищена — не забудьте сохранить файл', 'info');
+    });
+
+    render();
 }
 
 /* ============================================================
