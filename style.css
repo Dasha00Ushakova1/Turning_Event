@@ -96,6 +96,118 @@ body {
     text-decoration: none;
     backdrop-filter: blur(6px);
 }
+/* ==============================================================
+   СТРАНИЦА ИСТОРИИ
+   ============================================================== */
+.history-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(14, 10, 18, 0.75);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--color-border, rgba(201, 168, 106, 0.35));
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+.history-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--color-border, rgba(201, 168, 106, 0.35));
+    color: var(--color-accent, #c9a86a);
+    font-size: 20px;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.history-back:hover {
+    background: rgba(201, 168, 106, 0.15);
+}
+.history-title {
+    font-family: var(--font-fancy, Georgia, serif);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--color-accent, #c9a86a);
+}
+
+.history-main {
+    flex: 1;
+    padding: 20px 16px 40px;
+    z-index: 1;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.history-card {
+    background: rgba(20, 14, 26, 0.75);
+    border: 1px solid var(--color-border, rgba(201, 168, 106, 0.35));
+    border-radius: var(--radius, 10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    padding: 8px 4px 12px;
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.history-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--color-accent, #c9a86a);
+    border-bottom: 1px solid var(--color-border, rgba(201, 168, 106, 0.35));
+    white-space: nowrap;
+}
+.history-table tbody td {
+    padding: 12px 16px;
+    color: var(--color-text, #f4ecd8);
+    border-bottom: 1px solid rgba(201, 168, 106, 0.12);
+    white-space: nowrap;
+}
+.history-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.history-table tbody tr:hover {
+    background: rgba(201, 168, 106, 0.06);
+}
+
+.history-table td:nth-child(1) { color: var(--color-text-muted, #b8a888); }
+.history-table td:nth-child(4) {
+    color: var(--color-accent, #c9a86a);
+    font-family: var(--font-fancy, Georgia, serif);
+    font-size: 15px;
+}
+
+.history-empty {
+    color: var(--color-text-muted, #b8a888);
+    font-style: italic;
+    text-align: center;
+    padding: 32px 16px;
+}
+
+/* Мобильная версия */
+@media (max-width: 640px) {
+    .history-main { padding: 16px 8px 32px; }
+    .history-table thead th,
+    .history-table tbody td {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    .history-title { font-size: 18px; }
+}
 
 /* ==============================================================
    Результат
