@@ -303,6 +303,10 @@ spinAllBtn.addEventListener('click', () => {
     spinOne('actions');
     setTimeout(() => updateResultLine(true), 600);   // ← true = сохранять
 });
+document.querySelectorAll('.wheel__spin').forEach(btn => {
+    btn.addEventListener('click', () => spinOne(btn.dataset.target));
+    // ↑ даже не вызывает updateResultLine(true)
+});
 
 /* ============================================================
  * Запуск
