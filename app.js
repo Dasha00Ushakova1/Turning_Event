@@ -7,7 +7,7 @@
 const DEFAULT_CHARACTERS = ['Юдер', 'Канна', 'Нахан', 'Кишиар', 'Гакейн'];
 const DEFAULT_ACTIONS    = ['У моря', 'Спит', 'Что-то ест', 'Рабочий день', 'Выходной'];
 
-/* Кэш БД — чтобы не тянуть её в каждой функции */
+/* Кэш БД */
 let _appDb = null;
 
 /* ============================================================
@@ -81,15 +81,13 @@ function addAction(value) {
 function removeCharacter(value) {
     if (_appDb) deletePhrase(_appDb, 'character', value);
     const list = JSON.parse(localStorage.getItem('characters') || '[]');
-    const filtered = list.filter(v => v !== value);
-    localStorage.setItem('characters', JSON.stringify(filtered));
+    localStorage.setItem('characters', JSON.stringify(list.filter(v => v !== value)));
 }
 
 function removeAction(value) {
     if (_appDb) deletePhrase(_appDb, 'action', value);
     const list = JSON.parse(localStorage.getItem('actions') || '[]');
-    const filtered = list.filter(v => v !== value);
-    localStorage.setItem('actions', JSON.stringify(filtered));
+    localStorage.setItem('actions', JSON.stringify(list.filter(v => v !== value)));
 }
 
 /* ============================================================
@@ -127,7 +125,6 @@ async function initGenerator() {
             };
             try {
                 insertHistory(_appDb, entry);
-                // ← уведомление убрано намеренно
             } catch (e) {
                 console.error('Не удалось добавить запись:', e);
             }
@@ -267,28 +264,24 @@ async function initHistory() {
         return;
     }
 
-    function render() {
-        const entries = getAllHistory(_appDb);
-        listEl.innerHTML = '';
+    const entries = getAllHistory(_appDb);
+    listEl.innerHTML = '';
 
-        if (entries.length === 0) {
-            emptyEl.hidden = false;
-            return;
-        }
-        emptyEl.hidden = true;
-
-        entries.forEach(entry => {
-            const li = document.createElement('li');
-            li.className = 'history-item';
-            li.innerHTML = `
-                <span class="history-item__time">${entry.formatted}</span>
-                <span class="history-item__result">${entry.result}</span>
-            `;
-            listEl.appendChild(li);
-        });
+    if (entries.length === 0) {
+        emptyEl.hidden = false;
+        return;
     }
+    emptyEl.hidden = true;
 
-    render();
+    entries.forEach(entry => {
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        li.innerHTML = `
+            <span class="history-item__time">${entry.formatted}</span>
+            <span class="history-item__result">${entry.result}</span>
+        `;
+        listEl.appendChild(li);
+    });
 }
 
 /* ============================================================
