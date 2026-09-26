@@ -88,19 +88,3 @@ function phraseExists(db, kind, value) {
         LIMIT 1
     `).length > 0;
 }
-
-/* ============================================================
- * Скачать обновлённый history.db — только для админа (через консоль)
- * ============================================================ */
-function downloadDatabase(db) {
-    const data = db.export();
-    const blob = new Blob([data], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'history.db';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
