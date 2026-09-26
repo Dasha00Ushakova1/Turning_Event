@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turning — Игра </title>
+    <title>Turning — Игра</title>
     <link rel="icon" href="./unnamed.png" type="image/jpeg">
     <link rel="stylesheet" href="./style.css">
 </head>
@@ -11,8 +11,17 @@
 
     <div class="bg"></div>
 
+    <!-- Кнопка «История» слева сверху -->
     <a href="history.html" class="history-link" aria-label="История">📜</a>
 
+    <!-- Итоговый результат -->
+    <header class="result">
+        <div class="result__line" id="result-line">
+            <span class="result__placeholder">Нажми «Запустить всё», чтобы получить результат</span>
+        </div>
+    </header>
+
+    <!-- Два колеса -->
     <main class="wheels">
         <section class="wheel" data-wheel="characters">
             <h3 class="wheel__title">Персонаж</h3>
@@ -27,13 +36,15 @@
         </section>
     </main>
 
+    <!-- Кнопки внизу -->
     <footer class="actions">
-        <button id="spin-all" class="btn btn--primary" type="button">📜 Запустить всё одновременно </button>
+        <button id="spin-all" class="btn btn--primary" type="button">📜 Запустить всё одновременно</button>
         <div class="actions__hint">
             <a href="#" id="open-manage">Управление фразами</a>
         </div>
     </footer>
 
+    <!-- Модальное окно управления фразами -->
     <div id="manage-modal" class="modal" hidden>
         <div class="modal__window">
             <h3 class="modal__title">Управление фразами</h3>
@@ -57,7 +68,12 @@
             </div>
         </div>
     </div>
+
     <div id="toast" class="toast" hidden></div>
+
+    <!-- !!! Порядок важен: sql-wasm.js → db.js → app.js -->
+    <script src="./sql-wasm.js"></script>
+    <script src="./db.js"></script>
     <script src="./app.js"></script>
 </body>
 </html>
