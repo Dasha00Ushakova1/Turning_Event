@@ -298,6 +298,11 @@ async function initHistory() {
 
     render();
 }
+spinAllBtn.addEventListener('click', () => {
+    spinOne('characters');
+    spinOne('actions');
+    setTimeout(() => updateResultLine(true), 600);   // ← true = сохранять
+});
 
 /* ============================================================
  * Запуск
