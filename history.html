@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turning — История</title>
+    <link rel="icon" href="./IMG_20260926_155712_205.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="page page--history">
+
+    <div class="bg"></div>
+
+    <header class="history-header">
+        <a href="index.html" class="history-back" aria-label="Назад">←</a>
+        <h1 class="history-title">История генераций</h1>
+    </header>
+
+    <main class="history-main">
+        <ul id="history-list" class="history-list"></ul>
+        <p id="history-empty" class="history-empty" hidden>Пока ничего не сгенерировано.</p>
+        <button id="clear-history" class="btn btn--ghost btn--dark btn--small" type="button">
+            Очистить историю
+        </button>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
