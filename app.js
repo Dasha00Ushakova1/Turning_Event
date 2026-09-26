@@ -17,11 +17,14 @@ function pickRandom(arr) {
     if (!arr || arr.length === 0) return '—';
     return arr[Math.floor(Math.random() * arr.length)];
 }
+
 function pad2(n) { return String(n).padStart(2, '0'); }
+
 function formatTimestamp(date) {
     return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()} ` +
            `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
+
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -33,8 +36,7 @@ function showToast(message, type = 'info') {
 }
 
 /* ============================================================
- * Обёртки над фразами — если БД есть, работаем с ней;
- * иначе (на крайний случай) — с localStorage.
+ * Обёртки над фразами
  * ============================================================ */
 function getCharacters() {
     if (_appDb) {
@@ -59,7 +61,6 @@ function addCharacter(value) {
         if (phraseExists(_appDb, 'character', value)) return false;
         insertPhrase(_appDb, 'character', value);
     }
-    // Дублируем в localStorage — как временный буфер
     const list = JSON.parse(localStorage.getItem('characters') || '[]');
     if (!list.includes(value)) list.push(value);
     localStorage.setItem('characters', JSON.stringify(list));
@@ -126,10 +127,9 @@ async function initGenerator() {
             };
             try {
                 insertHistory(_appDb, entry);
-                showToast('Запись добавлена в историю', 'success');
+                // ← уведомление убрано намеренно
             } catch (e) {
                 console.error('Не удалось добавить запись:', e);
-                showToast('Ошибка записи в историю', 'error');
             }
         }
     }
@@ -194,7 +194,7 @@ function initManageModal() {
 
     document.querySelectorAll('[data-add]').forEach(btn => {
         btn.addEventListener('click', () => {
-            const kind = btn.dataset.add;   // 'characters' | 'actions'
+            const kind = btn.dataset.add;
             const input = document.getElementById(
                 kind === 'characters' ? 'new-character' : 'new-action'
             );
@@ -203,7 +203,6 @@ function initManageModal() {
 
             const dbKind = kind === 'characters' ? 'character' : 'action';
 
-            // Проверка на дубликат
             if (_appDb && phraseExists(_appDb, dbKind, value)) {
                 showToast('Уже есть', 'error');
                 return;
@@ -255,9 +254,6 @@ function renderPhraseList(kind, containerId) {
 /* ============================================================
  * ИСТОРИЯ (history.html)
  * ============================================================ */
-/* ============================================================
- * ИСТОРИЯ (history.html)
- * ============================================================ */
 async function initHistory() {
     const listEl  = document.getElementById('history-list');
     const emptyEl = document.getElementById('history-empty');
@@ -291,21 +287,6 @@ async function initHistory() {
             listEl.appendChild(li);
         });
     }
-
-    render();
-}
-
-    saveBtn.addEventListener('click', () => {
-        downloadDatabase(_appDb);
-        showToast('Файл history.db скачан — залейте его в репозиторий', 'success');
-    });
-
-    clearBtn.addEventListener('click', () => {
-        if (!confirm('Очистить всю историю?')) return;
-        clearHistoryDb(_appDb);
-        render();
-        showToast('История очищена — не забудьте сохранить файл', 'info');
-    });
 
     render();
 }
