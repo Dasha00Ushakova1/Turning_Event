@@ -255,17 +255,18 @@ function renderPhraseList(kind, containerId) {
 /* ============================================================
  * ИСТОРИЯ (history.html)
  * ============================================================ */
+/* ============================================================
+ * ИСТОРИЯ (history.html)
+ * ============================================================ */
 async function initHistory() {
     const listEl  = document.getElementById('history-list');
     const emptyEl = document.getElementById('history-empty');
-    const saveBtn = document.getElementById('save-db');
-    const clearBtn = document.getElementById('clear-history');
 
     try {
         _appDb = await loadHistoryDatabase();
     } catch (err) {
         console.error(err);
-        emptyEl.textContent = 'Не удалось загрузить history.db';
+        emptyEl.textContent = 'Не удалось загрузить историю';
         emptyEl.hidden = false;
         return;
     }
@@ -290,6 +291,9 @@ async function initHistory() {
             listEl.appendChild(li);
         });
     }
+
+    render();
+}
 
     saveBtn.addEventListener('click', () => {
         downloadDatabase(_appDb);
