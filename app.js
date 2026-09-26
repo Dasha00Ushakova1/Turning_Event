@@ -44,24 +44,22 @@ function lsSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
  * История: объединяем БД + localStorage
  * ============================================================ */
 function getAllHistoryCombined(db) {
-    const fromDb = getAllHistory(db);
+    const fromDb = db ? getAllHistory(db) : [];
+    const fromLs = lsGet('history', []);
 
-    const fromLs = lsGet('history', []);   // {timestamp, formatted, character, action, result}
     const seen = new Set(fromDb.map(e => e.timestamp));
     const extra = fromLs.filter(e => !seen.has(e.timestamp));
 
-    // Сортируем: новые сверху
     const merged = [...fromDb, ...extra];
     merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     return merged;
 }
 
 function addHistoryEntry(db, entry) {
-    // 1. Пишем в БД (в памяти)
-    try { insertHistory(db, entry); }
-    catch (e) { console.warn('Ошибка записи в БД:', e.message); }
-
-    // 2. Пишем в localStorage (переживёт перезагрузку)
+    if (db) {
+        try { insertHistory(db, entry); }
+        catch (e) { console.warn('Ошибка записи в БД:', e.message); }
+    }
     const list = lsGet('history', []);
     list.push(entry);
     lsSet('history', list);
@@ -172,14 +170,21 @@ async function initGenerator() {
         }, 60);
     }
 
+    /* Главная кнопка — крутит оба колеса и сохраняет */
     spinAllBtn.addEventListener('click', () => {
         spinOne('characters');
         spinOne('actions');
         setTimeout(() => updateResultLine(true), 600);
     });
 
+    /* Кнопки «Крутить» у каждого колеса:
+       крутят своё колесо и — если оба значения уже заполнены —
+       тоже пишут запись в историю. */
     document.querySelectorAll('.wheel__spin').forEach(btn => {
-        btn.addEventListener('click', () => spinOne(btn.dataset.target));
+        btn.addEventListener('click', () => {
+            spinOne(btn.dataset.target);
+            setTimeout(() => updateResultLine(true), 700);
+        });
     });
 
     initManageModal();
@@ -274,39 +279,26 @@ async function initHistory() {
         _appDb = null;
     }
 
-    function render() {
-        const entries = getAllHistoryCombined(_appDb);
-        tbody.innerHTML = '';
+    const entries = getAllHistoryCombined(_appDb);
+    tbody.innerHTML = '';
 
-        if (entries.length === 0) {
-            emptyEl.hidden = false;
-            return;
-        }
-        emptyEl.hidden = true;
-
-        entries.forEach(e => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${e.formatted || ''}</td>
-                <td>${e.character || ''}</td>
-                <td>${e.action || ''}</td>
-                <td>${e.result || ''}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+    if (entries.length === 0) {
+        emptyEl.hidden = false;
+        return;
     }
+    emptyEl.hidden = true;
 
-    render();
+    entries.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${e.formatted || ''}</td>
+            <td>${e.character || ''}</td>
+            <td>${e.action || ''}</td>
+            <td>${e.result || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
-spinAllBtn.addEventListener('click', () => {
-    spinOne('characters');
-    spinOne('actions');
-    setTimeout(() => updateResultLine(true), 600);   // ← true = сохранять
-});
-document.querySelectorAll('.wheel__spin').forEach(btn => {
-    btn.addEventListener('click', () => spinOne(btn.dataset.target));
-    // ↑ даже не вызывает updateResultLine(true)
-});
 
 /* ============================================================
  * Запуск
