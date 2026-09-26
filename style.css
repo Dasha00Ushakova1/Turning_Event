@@ -539,8 +539,17 @@ body {
     max-width: calc(100vw - 32px);
     text-align: center;
 }
-.toast--success { border-color: #27ae60; }
-.toast--error   { border-color: #e74c3c; }
+.toast--success {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    box-shadow:
+        0 0 0 1px rgba(201, 168, 106, 0.25),
+        0 4px 20px rgba(0, 0, 0, 0.4);
+}
+.toast--error {
+    border-color: #c76b6b;
+    color: #e8a0a0;
+}
 
 /* ==============================================================
    Мобильная версия (уже основной таргет)
