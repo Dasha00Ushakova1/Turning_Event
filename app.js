@@ -1,13 +1,8 @@
 'use strict';
 
 /* ============================================================
- * Значения по умолчанию — используются как fallback,
- * если history.db недоступна
+ * Состояние
  * ============================================================ */
-const DEFAULT_CHARACTERS = ['Юдер', 'Канна', 'Нахан', 'Кишиар', 'Гакейн'];
-const DEFAULT_ACTIONS    = ['У моря', 'Спит', 'Что-то ест', 'Рабочий день', 'Выходной'];
-
-/* Кэш БД */
 let _appDb = null;
 
 /* ============================================================
@@ -17,78 +12,52 @@ function pickRandom(arr) {
     if (!arr || arr.length === 0) return '—';
     return arr[Math.floor(Math.random() * arr.length)];
 }
-
 function pad2(n) { return String(n).padStart(2, '0'); }
-
 function formatTimestamp(date) {
     return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()} ` +
            `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
-
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.className = `toast toast--${type}`;
-    toast.hidden = false;
+function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.className = `toast toast--${type}`;
+    t.hidden = false;
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => { toast.hidden = true; }, 2500);
+    showToast._t = setTimeout(() => { t.hidden = true; }, 2500);
 }
+
+/* ============================================================
+ * Дефолтные фразы — если БД пустая
+ * ============================================================ */
+const DEFAULT_CHARACTERS = ['Юдер', 'Канна', 'Нахан', 'Кишиар', 'Гакейн'];
+const DEFAULT_ACTIONS    = ['У моря', 'Спит', 'Что-то ест', 'Рабочий день', 'Выходной'];
 
 /* ============================================================
  * Обёртки над фразами
  * ============================================================ */
 function getCharacters() {
-    if (_appDb) {
-        const rows = getPhrases(_appDb, 'character');
-        return rows.length ? rows.map(r => r.value) : [...DEFAULT_CHARACTERS];
-    }
-    const raw = localStorage.getItem('characters');
-    return raw ? JSON.parse(raw) : [...DEFAULT_CHARACTERS];
+    const rows = getPhrases(_appDb, 'character').map(r => r.value);
+    return rows.length ? rows : [...DEFAULT_CHARACTERS];
 }
 
 function getActions() {
-    if (_appDb) {
-        const rows = getPhrases(_appDb, 'action');
-        return rows.length ? rows.map(r => r.value) : [...DEFAULT_ACTIONS];
-    }
-    const raw = localStorage.getItem('actions');
-    return raw ? JSON.parse(raw) : [...DEFAULT_ACTIONS];
+    const rows = getPhrases(_appDb, 'action').map(r => r.value);
+    return rows.length ? rows : [...DEFAULT_ACTIONS];
 }
 
 function addCharacter(value) {
-    if (_appDb) {
-        if (phraseExists(_appDb, 'character', value)) return false;
-        insertPhrase(_appDb, 'character', value);
-    }
-    const list = JSON.parse(localStorage.getItem('characters') || '[]');
-    if (!list.includes(value)) list.push(value);
-    localStorage.setItem('characters', JSON.stringify(list));
+    if (phraseExists(_appDb, 'character', value)) return false;
+    insertPhrase(_appDb, 'character', value);
     return true;
 }
-
 function addAction(value) {
-    if (_appDb) {
-        if (phraseExists(_appDb, 'action', value)) return false;
-        insertPhrase(_appDb, 'action', value);
-    }
-    const list = JSON.parse(localStorage.getItem('actions') || '[]');
-    if (!list.includes(value)) list.push(value);
-    localStorage.setItem('actions', JSON.stringify(list));
+    if (phraseExists(_appDb, 'action', value)) return false;
+    insertPhrase(_appDb, 'action', value);
     return true;
 }
-
-function removeCharacter(value) {
-    if (_appDb) deletePhrase(_appDb, 'character', value);
-    const list = JSON.parse(localStorage.getItem('characters') || '[]');
-    localStorage.setItem('characters', JSON.stringify(list.filter(v => v !== value)));
-}
-
-function removeAction(value) {
-    if (_appDb) deletePhrase(_appDb, 'action', value);
-    const list = JSON.parse(localStorage.getItem('actions') || '[]');
-    localStorage.setItem('actions', JSON.stringify(list.filter(v => v !== value)));
-}
+function removeCharacter(value) { deletePhrase(_appDb, 'character', value); }
+function removeAction(value)    { deletePhrase(_appDb, 'action', value); }
 
 /* ============================================================
  * ГЕНЕРАТОР (index.html)
@@ -102,11 +71,12 @@ async function initGenerator() {
     try {
         _appDb = await loadHistoryDatabase();
     } catch (err) {
-        console.warn('history.db недоступна:', err.message);
-        _appDb = null;
+        showToast('Не удалось загрузить history.db', 'error');
+        console.error(err);
+        return;
     }
 
-    let currentChar   = '—';
+    let currentChar = '—';
     let currentAction = '—';
 
     function updateResultLine(saveToHistory) {
@@ -114,25 +84,22 @@ async function initGenerator() {
         resultLine.innerHTML = `<span class="result__text">${text}</span>`;
 
         const bothReady = currentChar !== '—' && currentAction !== '—';
-        if (saveToHistory && bothReady && _appDb) {
+        if (saveToHistory && bothReady) {
             const now = new Date();
-            const entry = {
+            insertHistory(_appDb, {
                 timestamp: now.getTime(),
                 formatted: formatTimestamp(now),
                 character: currentChar,
                 action: currentAction,
                 result: text
-            };
-            try {
-                insertHistory(_appDb, entry);
-            } catch (e) {
-                console.error('Не удалось добавить запись:', e);
-            }
+            });
         }
     }
 
     function spinOne(kind) {
         const list = kind === 'characters' ? getCharacters() : getActions();
+        if (list.length === 0) { showToast('Список пуст', 'error'); return; }
+
         const value = pickRandom(list);
         const slot = kind === 'characters' ? charSlot : actionSlot;
 
@@ -153,8 +120,6 @@ async function initGenerator() {
                 updateResultLine(false);
             }
         }, 60);
-
-        return value;
     }
 
     spinAllBtn.addEventListener('click', () => {
@@ -174,7 +139,7 @@ async function initGenerator() {
  * Модалка управления фразами
  * ============================================================ */
 function initManageModal() {
-    const modal = document.getElementById('manage-modal');
+    const modal   = document.getElementById('manage-modal');
     const openBtn = document.getElementById('open-manage');
     const closeBtn = document.getElementById('manage-close');
     if (!modal || !openBtn) return;
@@ -198,15 +163,8 @@ function initManageModal() {
             const value = input.value.trim();
             if (!value) { showToast('Введите фразу', 'error'); return; }
 
-            const dbKind = kind === 'characters' ? 'character' : 'action';
-
-            if (_appDb && phraseExists(_appDb, dbKind, value)) {
-                showToast('Уже есть', 'error');
-                return;
-            }
-
-            if (kind === 'characters') addCharacter(value);
-            else                       addAction(value);
+            const ok = kind === 'characters' ? addCharacter(value) : addAction(value);
+            if (!ok) { showToast('Уже есть', 'error'); return; }
 
             input.value = '';
             renderManageLists();
@@ -273,12 +231,12 @@ async function initHistory() {
     }
     emptyEl.hidden = true;
 
-    entries.forEach(entry => {
+    entries.forEach(e => {
         const li = document.createElement('li');
         li.className = 'history-item';
         li.innerHTML = `
-            <span class="history-item__time">${entry.formatted}</span>
-            <span class="history-item__result">${entry.result}</span>
+            <span class="history-item__time">${e.formatted}</span>
+            <span class="history-item__result">${e.result}</span>
         `;
         listEl.appendChild(li);
     });
