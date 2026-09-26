@@ -151,13 +151,13 @@ function initManageModal() {
             if (!value) { showToast('Введите фразу', 'error'); return; }
 
             const list = kind === 'characters' ? Storage.getCharacters() : Storage.getActions();
-            if (list.includes(value)) { showToast('Такая фраза уже есть', 'error'); return; }
+            if (list.includes(value)) { showToast('Уже есть', 'error'); return; }
 
             list.push(value);
             kind === 'characters' ? Storage.setCharacters(list) : Storage.setActions(list);
             input.value = '';
             renderManageLists();
-            showToast('Фраза добавлена', 'success');
+            showToast('Добавлено', 'success');
         });
     });
 }
