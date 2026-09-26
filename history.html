@@ -17,19 +17,23 @@
     </header>
 
     <main class="history-main">
-        <table class="data-table history-table">
-            <thead class="data-table__head">
-                <tr>
-                    <th>Дата и время</th>
-                    <th>Персонаж</th>
-                    <th>Действие</th>
-                    <th>Результат</th>
-                </tr>
-            </thead>
-            <tbody class="data-table__body" id="history-body"></tbody>
-        </table>
+        <div class="history-card">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Дата и время</th>
+                        <th>Персонаж</th>
+                        <th>Действие</th>
+                        <th>Результат</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
 
-        <p id="history-empty" class="history-empty" hidden>Пока ничего не сгенерировано.</p>
+            <p id="history-empty" class="history-empty" hidden>
+                Пока ничего не сгенерировано.
+            </p>
+        </div>
     </main>
 
     <div id="toast" class="toast" hidden></div>
