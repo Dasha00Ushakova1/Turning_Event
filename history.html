@@ -19,13 +19,26 @@
     <main class="history-main">
         <ul id="history-list" class="history-list"></ul>
         <p id="history-empty" class="history-empty" hidden>Пока ничего не сгенерировано.</p>
-        <button id="clear-history" class="btn btn--ghost btn--dark btn--small" type="button">
-            Очистить историю
-        </button>
+
+        <div class="history-actions">
+            <button id="save-db" class="btn btn--primary btn--small" type="button">
+                 Сохранить в history.db
+            </button>
+            <button id="clear-history" class="btn btn--ghost btn--dark btn--small" type="button">
+                Очистить историю
+            </button>
+        </div>
+
+        <p class="history-hint">
+            Чтобы история стала общей для всех устройств — скачайте обновлённый
+            <b>history.db</b> и залейте его в репозиторий (заменить старый файл).
+        </p>
     </main>
 
     <div id="toast" class="toast" hidden></div>
 
+    <script src="./sql-wasm.js"></script>
+    <script src="./db.js"></script>
     <script src="./app.js"></script>
 </body>
 </html>
