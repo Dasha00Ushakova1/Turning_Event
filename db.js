@@ -10,29 +10,27 @@ async function loadHistoryDatabase() {
 
     const SQL = await initSqlJs({ locateFile: file => `./${file}` });
     const response = await fetch('./history.db');
-    if (!response.ok) {
-        throw new Error(`Не удалось загрузить history.db (HTTP ${response.status})`);
-    }
+    if (!response.ok) throw new Error(`history.db: HTTP ${response.status}`);
     const buffer = await response.arrayBuffer();
     _db = new SQL.Database(new Uint8Array(buffer));
     return _db;
 }
 
 /* ============================================================
- * Общие утилиты
+ * Утилиты
  * ============================================================ */
 function queryDb(db, sql) {
     const res = db.exec(sql);
     if (!res || res.length === 0) return [];
     const { columns, values } = res[0];
     return values.map(row => {
-        const obj = {};
-        columns.forEach((c, i) => obj[c] = row[i]);
-        return obj;
+        const o = {};
+        columns.forEach((c, i) => o[c] = row[i]);
+        return o;
     });
 }
 
-function escapeSql(s) {
+function esc(s) {
     return String(s).replace(/'/g, "''");
 }
 
@@ -42,72 +40,61 @@ function escapeSql(s) {
 function getAllHistory(db) {
     return queryDb(db, `
         SELECT id, timestamp, formatted, character, action, result
-        FROM History
-        ORDER BY timestamp DESC
+        FROM History ORDER BY timestamp DESC
     `);
 }
 
-function insertHistory(db, entry) {
+function insertHistory(db, e) {
     db.run(`
         INSERT INTO History (timestamp, formatted, character, action, result)
         VALUES (
-            ${entry.timestamp},
-            '${escapeSql(entry.formatted)}',
-            '${escapeSql(entry.character)}',
-            '${escapeSql(entry.action)}',
-            '${escapeSql(entry.result)}'
+            ${e.timestamp},
+            '${esc(e.formatted)}',
+            '${esc(e.character)}',
+            '${esc(e.action)}',
+            '${esc(e.result)}'
         )
     `);
 }
 
-function clearHistoryDb(db) {
-    db.run('DELETE FROM History');
-}
-
 /* ============================================================
- * Фразы (персонажи и действия)
+ * Фразы
  * ============================================================ */
 function getPhrases(db, kind) {
     return queryDb(db, `
         SELECT id, value FROM Phrases
-        WHERE kind = '${escapeSql(kind)}'
-        ORDER BY id ASC
+        WHERE kind = '${esc(kind)}' ORDER BY id ASC
     `);
 }
 
 function insertPhrase(db, kind, value) {
     db.run(`
         INSERT INTO Phrases (kind, value)
-        VALUES ('${escapeSql(kind)}', '${escapeSql(value)}')
+        VALUES ('${esc(kind)}', '${esc(value)}')
     `);
 }
 
 function deletePhrase(db, kind, value) {
     db.run(`
         DELETE FROM Phrases
-        WHERE kind = '${escapeSql(kind)}' AND value = '${escapeSql(value)}'
+        WHERE kind = '${esc(kind)}' AND value = '${esc(value)}'
     `);
 }
 
 function phraseExists(db, kind, value) {
-    const rows = queryDb(db, `
+    return queryDb(db, `
         SELECT 1 FROM Phrases
-        WHERE kind = '${escapeSql(kind)}' AND value = '${escapeSql(value)}'
+        WHERE kind = '${esc(kind)}' AND value = '${esc(value)}'
         LIMIT 1
-    `);
-    return rows.length > 0;
+    `).length > 0;
 }
 
 /* ============================================================
- * Экспорт файла history.db
+ * Скачать обновлённый history.db — только для админа (через консоль)
  * ============================================================ */
-function exportDatabase(db) {
-    const data = db.export();
-    return new Blob([data], { type: 'application/octet-stream' });
-}
-
 function downloadDatabase(db) {
-    const blob = exportDatabase(db);
+    const data = db.export();
+    const blob = new Blob([data], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
