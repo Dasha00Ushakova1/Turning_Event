@@ -17,7 +17,18 @@
     </header>
 
     <main class="history-main">
-        <ul id="history-list" class="history-list"></ul>
+        <table class="data-table history-table">
+            <thead class="data-table__head">
+                <tr>
+                    <th>Дата и время</th>
+                    <th>Персонаж</th>
+                    <th>Действие</th>
+                    <th>Результат</th>
+                </tr>
+            </thead>
+            <tbody class="data-table__body" id="history-body"></tbody>
+        </table>
+
         <p id="history-empty" class="history-empty" hidden>Пока ничего не сгенерировано.</p>
     </main>
 
